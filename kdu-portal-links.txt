@@ -10,3 +10,9 @@ Email:    student@kduniv.ac.kr
 Password: password123
 
 Tip: on the Sign In page, the "Admin Demo" and "Student Demo" buttons log in with one click.
+git add .
+git commit -m "Update"
+git push
+cd /var/www/html
+sudo git pull
+git log --oneline -1
