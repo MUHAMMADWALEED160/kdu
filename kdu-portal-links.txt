@@ -1,0 +1,12 @@
+KDU Global | Unified Student & Admin Portal
+https://tube-future-rfc-console.trycloudflare.com/
+
+ADMIN LOGIN
+Email:    admin@kduniv.ac.kr
+Password: admin123
+
+STUDENT LOGIN
+Email:    student@kduniv.ac.kr
+Password: password123
+
+Tip: on the Sign In page, the "Admin Demo" and "Student Demo" buttons log in with one click.
