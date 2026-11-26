@@ -1741,6 +1741,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     };
 
+    // ----- Quiz builder: one block per question, "+ Add Question" adds more -----
+    const MAX_QUIZ_QUESTIONS = 20;
+
+    // HTML for ONE question block. Fields are found later by class, not id,
+    // because there can be many blocks on the form at the same time.
+    const quizQuestionBlockHtml = () => `
+        <div class="qb-block">
+            <div class="qb-head">
+                <h4 class="qb-title">Question</h4>
+                <button type="button" class="btn-danger-outline qb-remove">Remove</button>
+            </div>
+            <div class="form-group">
+                <label>Question Text <span class="required">*</span></label>
+                <input type="text" class="form-control qb-text" placeholder="e.g. Which web storage persists across browser restarts?">
+            </div>
+            <div class="form-row">
+                <input type="text" class="form-control qb-opt" placeholder="Option A">
+                <input type="text" class="form-control qb-opt" placeholder="Option B">
+            </div>
+            <div class="form-row qb-row-gap">
+                <input type="text" class="form-control qb-opt" placeholder="Option C">
+                <input type="text" class="form-control qb-opt" placeholder="Option D">
+            </div>
+            <div class="form-row qb-row-gap">
+                <div class="form-group">
+                    <label>Correct Answer <span class="required">*</span></label>
+                    <select class="form-control qb-correct">
+                        <option value="0">Option A</option>
+                        <option value="1">Option B</option>
+                        <option value="2">Option C</option>
+                        <option value="3">Option D</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Explanation (optional)</label>
+                    <input type="text" class="form-control qb-expl" placeholder="Why is this answer correct?">
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Number the blocks "Question 1, 2, 3..." and hide Remove when only one is left
+    const renumberQuizBlocks = () => {
+        const blocks = document.querySelectorAll('#qbList .qb-block');
+        blocks.forEach((block, i) => {
+            block.querySelector('.qb-title').textContent = `Question ${i + 1}`;
+            block.querySelector('.qb-remove').classList.toggle('hidden', blocks.length === 1);
+        });
+        document.getElementById('qbCount').textContent =
+            `${blocks.length} question${blocks.length === 1 ? '' : 's'}`;
+        document.getElementById('btnAddQuizQuestion').disabled = blocks.length >= MAX_QUIZ_QUESTIONS;
+    };
+
     const openCreateQuizModal = () => {
         const body = `
             <form>
@@ -1755,33 +1808,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="form-group">
                         <label>Time Limit (Minutes)</label>
-                        <input type="number" id="qzLimit" class="form-control" value="15" min="5">
+                        <input type="number" id="qzLimit" class="form-control" value="15" min="1">
                     </div>
                 </div>
 
-                <div style="background:#F8FAFC; border:1px dashed var(--border-strong); padding:1rem; border-radius:var(--radius-md); margin-top:1rem;">
-                    <h4 style="font-size:0.9rem; color:var(--primary); margin-bottom:0.5rem;">Question 1</h4>
-                    <div class="form-group">
-                        <label>Question Text</label>
-                        <input type="text" id="q1Text" class="form-control" placeholder="e.g. Which web storage persists across browser restarts?">
-                    </div>
-                    <div class="form-row">
-                        <input type="text" id="q1Opt0" class="form-control" placeholder="Option A">
-                        <input type="text" id="q1Opt1" class="form-control" placeholder="Option B">
-                    </div>
-                    <div class="form-row" style="margin-top:0.5rem;">
-                        <input type="text" id="q1Opt2" class="form-control" placeholder="Option C">
-                        <input type="text" id="q1Opt3" class="form-control" placeholder="Option D">
-                    </div>
-                    <div class="form-group" style="margin-top:0.5rem;">
-                        <label>Correct Option Index (0 for A, 1 for B, 2 for C, 3 for D)</label>
-                        <select id="q1Correct" class="form-control">
-                            <option value="0">Option A</option>
-                            <option value="1">Option B</option>
-                            <option value="2">Option C</option>
-                            <option value="3">Option D</option>
-                        </select>
-                    </div>
+                <div id="qbList">${quizQuestionBlockHtml()}</div>
+
+                <div class="qb-toolbar">
+                    <button type="button" class="btn-secondary" id="btnAddQuizQuestion">+ Add Question</button>
+                    <span id="qbCount" class="text-small-light"></span>
                 </div>
             </form>
         `;
@@ -1790,37 +1825,67 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="btn-secondary" onclick="closeModal()">Cancel</button>
             <button class="btn-primary" id="btnSubmitBuildQuiz">Save and Publish Quiz</button>
         `);
+        renumberQuizBlocks();
+
+        // Add a new empty block at the end. insertAdjacentHTML does NOT rebuild the
+        // blocks already there, so text the admin already typed is kept.
+        document.getElementById('btnAddQuizQuestion').addEventListener('click', () => {
+            const list = document.getElementById('qbList');
+            list.insertAdjacentHTML('beforeend', quizQuestionBlockHtml());
+            renumberQuizBlocks();
+            list.lastElementChild.querySelector('.qb-text').focus();
+        });
+
+        // One listener for every Remove button, even ones added later (event delegation)
+        document.getElementById('qbList').addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.qb-remove');
+            if (!removeBtn) return;
+            removeBtn.closest('.qb-block').remove();
+            renumberQuizBlocks();
+        });
 
         document.getElementById('btnSubmitBuildQuiz').addEventListener('click', () => {
             const title = document.getElementById('qzTitle').value.trim();
             const course = document.getElementById('qzCourse').value.trim();
             const time_limit_mins = document.getElementById('qzLimit').value;
 
-            const qText = document.getElementById('q1Text').value.trim();
-            const opt0 = document.getElementById('q1Opt0').value.trim();
-            const opt1 = document.getElementById('q1Opt1').value.trim();
-            const opt2 = document.getElementById('q1Opt2').value.trim();
-            const opt3 = document.getElementById('q1Opt3').value.trim();
-            const correct = parseInt(document.getElementById('q1Correct').value, 10);
-
-            if (!title || !course || !qText || !opt0 || !opt1 || !opt2 || !opt3) {
-                showToast('Please fill in the title, course, question and all 4 options.', 'error');
+            if (!title || !course) {
+                showToast('Please fill in the quiz title and course.', 'error');
                 return;
             }
 
-            const questions = [
-                {
-                    id: 'q_' + Date.now(),
-                    question: qText,
-                    options: [opt0, opt1, opt2, opt3],
-                    correct,
-                    explanation: 'The correct answer is ' + [opt0, opt1, opt2, opt3][correct] + '.'
+            // Read every question block and check it is complete
+            const questions = [];
+            const blocks = document.querySelectorAll('#qbList .qb-block');
+            for (let i = 0; i < blocks.length; i++) {
+                const block = blocks[i];
+                const qText = block.querySelector('.qb-text').value.trim();
+                const options = [...block.querySelectorAll('.qb-opt')].map(input => input.value.trim());
+                const correct = parseInt(block.querySelector('.qb-correct').value, 10);
+                const explanation = block.querySelector('.qb-expl').value.trim();
+
+                if (!qText || options.some(opt => !opt)) {
+                    showToast(`Question ${i + 1}: please write the question and all 4 options.`, 'error');
+                    block.querySelector('.qb-text').focus();
+                    return;
                 }
-            ];
+                if (new Set(options.map(o => o.toLowerCase())).size < 4) {
+                    showToast(`Question ${i + 1}: the 4 options must be different.`, 'error');
+                    return;
+                }
+
+                questions.push({
+                    id: 'q_' + Date.now() + '_' + i,   // unique id per question
+                    question: qText,
+                    options,
+                    correct,
+                    explanation: explanation || 'The correct answer is ' + options[correct] + '.'
+                });
+            }
 
             db.createQuiz({ title, course, time_limit_mins, questions });
             closeModal();
-            showToast('New course quiz published.', 'success');
+            showToast(`Quiz published with ${questions.length} question${questions.length === 1 ? '' : 's'}.`, 'success');
             renderQuizzesModule();
         });
     };
